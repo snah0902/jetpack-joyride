@@ -10,11 +10,21 @@ class Zapper(object):
         self.firstZapCoords = firstZapCoords
         self.secondZapCoords = secondZapCoords
         self.radius = 15
+        
     
+class Missile(object):
+
+    def __init__(self, coords):
+        self.coords = coords
+        self.width = 60
+        self.height = 25
+        self.isTargeting = True
+        self.timeUntilLaunch = 120
+
 def onAppStart(app):
     app.rectLeft = 100
     app.rectTop = 200
-    app.playerX = 75
+    app.playerX = 100
     app.playerY = app.height/2
     app.playerR = 15
     app.circleVelocity = 0
@@ -24,11 +34,13 @@ def onAppStart(app):
     app.ticks = 0
     app.speed = 5
     app.zapperList = [ ]
-    app.zapperR = 15
-    app.isMissile = False
+    app.missileList = [ ]
+    app.missileWidth = 30
+    app.missileHeight = 10
+    app.isMissile = True
     app.isCoins = False
     app.isLaser = False
-    app.isZapper = True
+    app.isZapper = False
     app.missileCount = 0
     app.coinsCount = 0
     app.laserCount = 0
@@ -96,10 +108,10 @@ def playerMovement(app):
 
 # creates zapper obstacle
 def createZapper(app):
-    bounds = 100   
+    margin = 100   
     firstZapX = app.width
-    firstZapY = random.randint(bounds, app.height - bounds)
-    secondZapDistance = random.randint(app.zapperR * 2, bounds)
+    firstZapY = random.randint(margin, app.height - margin)
+    secondZapDistance = random.randint(30, margin)
     angle = random.choice([0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi,
                         5*math.pi/4, 3*math.pi/2, 7*math.pi/4, 2*math.pi])
     secondZapX = firstZapX + (secondZapDistance * math.cos(angle))
@@ -119,30 +131,30 @@ def distance(x0, y0, x1, y1):
 
 # checks if player collides with any zappers
 def checkZapperCollisions(app):
-    for obstacle in app.zapperList:
+    for zapper in app.zapperList:
         
-        firstZapX = obstacle.firstZapCoords[0]
-        firstZapY = obstacle.firstZapCoords[1]
+        firstZapX = zapper.firstZapCoords[0]
+        firstZapY = zapper.firstZapCoords[1]
 
         # checking collisions of zap circles
         if (distance(app.playerX, app.playerY, firstZapX, firstZapY) <=
-           (app.playerR + app.zapperR)):
+           (app.playerR + zapper.radius)):
             print('death skull emoji')
-        secondZapX = obstacle.secondZapCoords[0]
-        secondZapY = obstacle.secondZapCoords[1]
+        secondZapX = zapper.secondZapCoords[0]
+        secondZapY = zapper.secondZapCoords[1]
         if (distance(app.playerX, app.playerY, secondZapX, secondZapY) <=
-           (app.playerR + app.zapperR)):
+           (app.playerR + zapper.radius)):
            print('death skull emoji')
 
         # checking collisions of zap line (currently broken)
-        # if obstacle.secondZapCoords[0] - obstacle.firstZapCoords[0] == 0:
+        # if zapper.secondZapCoords[0] - zapper.firstZapCoords[0] == 0:
         #     slope = 0
         # else:
-        #     slope = -((obstacle.secondZapCoords[1] - obstacle.firstZapCoords[1])
-        #             /(obstacle.secondZapCoords[0] - obstacle.firstZapCoords[0]))
+        #     slope = -((zapper.secondZapCoords[1] - zapper.firstZapCoords[1])
+        #             /(zapper.secondZapCoords[0] - zapper.firstZapCoords[0]))
         # a = slope
         # b = -1
-        # c = -(slope * obstacle.firstZapCoords[0]) + obstacle.firstZapCoords[1]
+        # c = -(slope * zapper.firstZapCoords[0]) + zapper.firstZapCoords[1]
         # dist = ((abs(a * app.playerX + b * app.playerY + c)) /
         #         math.sqrt(a ** 2 + b ** 2))
     
@@ -168,18 +180,51 @@ def moveAndDeleteZappers(app):
 
 # draws zapper in zapperList
 def drawZappers(app):
-    for obstacle in app.zapperList:
-        drawCircle(obstacle.firstZapCoords[0], obstacle.firstZapCoords[1],
-                   obstacle.radius, fill='orange')
-        drawCircle(obstacle.secondZapCoords[0], obstacle.secondZapCoords[1],
-                   obstacle.radius, fill='orange')
-        drawLine(obstacle.firstZapCoords[0], obstacle.firstZapCoords[1],
-                 obstacle.secondZapCoords[0], obstacle.secondZapCoords[1])
+    for zapper in app.zapperList:
+        drawCircle(zapper.firstZapCoords[0], zapper.firstZapCoords[1],
+                   zapper.radius, fill='orange')
+        drawCircle(zapper.secondZapCoords[0], zapper.secondZapCoords[1],
+                   zapper.radius, fill='orange')
+        drawLine(zapper.firstZapCoords[0], zapper.firstZapCoords[1],
+                 zapper.secondZapCoords[0], zapper.secondZapCoords[1])
+
+
 
 
 def createCoins(app):
     pass
 
+
+def createMissile(app):
+    missileX = app.width
+    missileY = random.randint(0, app.height - app.missileHeight)
+    print(missileY)
+    newMissile = Missile((missileX, missileY))
+    app.missileList.append(newMissile)
+
+def moveAndDeleteMissiles(app):
+    i = 0
+    while i < len(app.missileList):
+        missile = app.missileList[i]
+        if missile.isTargeting:
+            missile.timeUntilLaunch -= 1
+            if missile.timeUntilLaunch == 0:
+                missile.isTargeting = False
+        else:
+            missileX = missile.coords[0]
+            missileX -= app.speed
+            missile.coords = (missileX, missile.coords[1])
+
+        if missile.coords[0] < 0:
+            app.missileList.pop(i)
+        else:
+            i += 1
+
+def drawMissiles(app):
+    for missile in app.missileList:
+        missileX = missile.coords[0]
+        missileY = missile.coords[1]
+        drawRect(missileX, missileY, missile.width, missile.height, fill='red')
 
 def onStep(app):
     app.ticks += 1
@@ -189,9 +234,18 @@ def onStep(app):
     
     elif app.isCoins:
         pass
+    
+    elif app.isMissile:
+        if app.ticks % 90 == 0:
+            createMissile(app)
+
+    moveAndDeleteMissiles(app)
+    # checkMissileCollisions(app)
 
     moveAndDeleteZappers(app)
     checkZapperCollisions(app)        
+
+
 
     if (app.missileCount == 0 and app.coinsCount == 0
         and app.laserCount == 0 and app.zapperCount == 0):
@@ -210,7 +264,7 @@ def redrawAll(app):
     
 
     drawZappers(app)
-
+    drawMissiles(app)
 
 def main():
     runApp(width=680, height=400)
