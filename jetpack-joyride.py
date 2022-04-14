@@ -32,7 +32,7 @@ def onAppStart(app):
     app.jetpackAcceleration = 0
     app.stepsPerSecond = 45
     app.ticks = 0
-    app.speed = 10
+    app.speed = 5
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
@@ -103,12 +103,19 @@ def playerMovement(app):
 
 # creates zapper obstacle
 def createZapper(app):
-    margin = 100   
+    margin = 100
+    zapperR = 15
     firstZapX = app.width
-    firstZapY = random.randint(margin, app.height - margin)
-    secondZapDistance = random.randint(30, margin)
-    angle = random.choice([0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi,
-                        5*math.pi/4, 3*math.pi/2, 7*math.pi/4, 2*math.pi])
+    firstZapY = random.randint(zapperR, app.height - zapperR)
+    secondZapDistance = random.randint(zapperR * 2, margin)
+
+    if firstZapY < secondZapDistance:
+        angle = random.choice([0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi])
+    elif firstZapY > app.height - secondZapDistance:
+        angle = random.choice([5*math.pi/4, 3*math.pi/2, 7*math.pi/4, 2*math.pi])
+    else:
+        angle = random.choice([0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi,
+                            5*math.pi/4, 3*math.pi/2, 7*math.pi/4, 2*math.pi])
     secondZapX = firstZapX + (secondZapDistance * math.cos(angle))
     secondZapY = firstZapY + (secondZapDistance * math.sin(angle))
     firstZapCoords = (firstZapX, firstZapY)
@@ -279,7 +286,7 @@ def onStep(app):
 
     if (app.missileCount == 0 and app.coinsCount == 0
         and app.laserCount == 0 and app.zapperCount == 0):
-        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 70, 5, 15), k=1)
+        randomIdx = random.choices([0, 1, 2, 3], weights=(0, 0, 5, 15), k=1)
         app.events[randomIdx[0]] = True
         
         if app.events[1]:
