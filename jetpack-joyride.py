@@ -19,12 +19,12 @@ class Missile(object):
         self.width = 60
         self.height = 25
         self.isTargeting = True
-        self.timeUntilLaunch = 120
+        self.timeUntilLaunch = 90
 
 def onAppStart(app):
     app.rectLeft = 100
     app.rectTop = 200
-    app.playerX = 100
+    app.playerX = 225
     app.playerY = app.height/2
     app.playerR = 15
     app.circleVelocity = 0
@@ -35,18 +35,13 @@ def onAppStart(app):
     app.speed = 5
     app.zapperList = [ ]
     app.missileList = [ ]
-    app.missileWidth = 30
-    app.missileHeight = 10
-    app.isMissile = True
-    app.isCoins = False
-    app.isLaser = False
-    app.isZapper = False
-    app.missileCount = 0
-    app.coinsCount = 0
-    app.laserCount = 0
-    app.zapperCount = 0
+    app.missileAlertR = 15
+    app.events = [True, False, False, False]
+    (app.isMissile, app.isCoins, app.isLaser, app.isZapper) = (
+        app.events[0], app.events[1], app.events[2], app.events[3])
+    app.missileCount = app.coinsCount = app.laserCount = app.zapperCount = 0
     app.currentCoins = 0
-    app.events = [app.isMissile, app.isCoins, app.isLaser, app.isZapper]
+
     app.rows = 68
     app.cols = 40
     
@@ -123,7 +118,7 @@ def createZapper(app):
     app.zapperCount -= 1
 
     if app.zapperCount == 0:
-        app.isZapper = False
+        app.events[3] = False
 
 # returns distance between two points
 def distance(x0, y0, x1, y1):
@@ -197,34 +192,62 @@ def createCoins(app):
 
 def createMissile(app):
     missileX = app.width
-    missileY = random.randint(0, app.height - app.missileHeight)
-    print(missileY)
+    missileY = random.randint(0, app.height - 25)
     newMissile = Missile((missileX, missileY))
     app.missileList.append(newMissile)
+    app.missileCount -= 1
+    if app.missileCount == 0:
+        app.events[0] = False
+
 
 def moveAndDeleteMissiles(app):
     i = 0
     while i < len(app.missileList):
         missile = app.missileList[i]
         if missile.isTargeting:
+            yCoord = missile.coords[1]
+            if yCoord > app.playerY:
+                if abs(yCoord - app.playerY) < app.speed / 2:
+                    yCoord = app.playerY
+                else:  
+                    yCoord -= app.speed / 2
+            elif yCoord < app.playerY:
+                if abs(yCoord - app.playerY) < app.speed / 2:
+                    yCoord = app.playerY
+                yCoord += app.speed / 2
+
+            missile.coords = (missile.coords[0], yCoord)
             missile.timeUntilLaunch -= 1
             if missile.timeUntilLaunch == 0:
                 missile.isTargeting = False
+            
         else:
             missileX = missile.coords[0]
-            missileX -= app.speed
+            missileX -= 1.5 * app.speed
             missile.coords = (missileX, missile.coords[1])
 
-        if missile.coords[0] < 0:
+        if missile.coords[0] + missile.width < 0:
             app.missileList.pop(i)
         else:
             i += 1
+
+def checkMissileCollisions(app):
+    for missile in app.missileList:
+        xCoord = missile.coords[0]
+        yCoord = missile.coords[1]
+        nearestX = max(xCoord, min(app.playerX, xCoord + missile.width))
+        nearestY = max(yCoord, min(app.playerY, yCoord + missile.height))
+        if distance(app.playerX, app.playerY, nearestX, nearestY) < app.playerR:
+            print('you die')
 
 def drawMissiles(app):
     for missile in app.missileList:
         missileX = missile.coords[0]
         missileY = missile.coords[1]
-        drawRect(missileX, missileY, missile.width, missile.height, fill='red')
+        if missile.isTargeting:
+            drawCircle(640, missileY + missile.height / 2, app.missileAlertR)
+        else:
+            drawRect(missileX, missileY, missile.width, missile.height, fill='red')
 
 def onStep(app):
     app.ticks += 1
@@ -236,23 +259,36 @@ def onStep(app):
         pass
     
     elif app.isMissile:
-        if app.ticks % 90 == 0:
+        if app.ticks % 40 == 0:
             createMissile(app)
 
-    moveAndDeleteMissiles(app)
-    # checkMissileCollisions(app)
+
 
     moveAndDeleteZappers(app)
     checkZapperCollisions(app)        
 
-
+    moveAndDeleteMissiles(app)
+    checkMissileCollisions(app)
 
     if (app.missileCount == 0 and app.coinsCount == 0
         and app.laserCount == 0 and app.zapperCount == 0):
-        nextEvent = random.choices(app.events, weights=(10, 70, 5, 15), k=1)
-        nextEvent = True
+        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 5, 70, 15), k=1)
+        app.events[randomIdx[0]] = True
+        
+        if app.events[1]:
+            app.events[1] = False
+            app.events[0] = True
+        elif app.events[2]:
+            app.events[2] = False
+            app.events[3] = True
+        print(app.events)
+
+        (app.isMissile, app.isCoins, app.isLaser, app.isZapper) = (
+        app.events[0], app.events[1], app.events[2], app.events[3])
         if app.isZapper:
             app.zapperCount += random.randint(5, 10)
+        elif app.isMissile:
+            app.missileCount += random.randint(1, 6)
 
     playerMovement(app)
 
