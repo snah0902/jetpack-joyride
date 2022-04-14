@@ -32,7 +32,7 @@ def onAppStart(app):
     app.jetpackAcceleration = 0
     app.stepsPerSecond = 45
     app.ticks = 0
-    app.speed = 5
+    app.speed = 10
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
@@ -215,21 +215,24 @@ def moveAndDeleteMissiles(app):
                 if abs(yCoord - app.playerY) < app.speed / 2:
                     yCoord = app.playerY
                 yCoord += app.speed / 2
-
+        
             missile.coords = (missile.coords[0], yCoord)
-            missile.timeUntilLaunch -= 1
-            if missile.timeUntilLaunch == 0:
+            if missile.timeUntilLaunch == 25:
                 missile.isTargeting = False
             
-        else:
+        elif missile.timeUntilLaunch <= 0:
             missileX = missile.coords[0]
             missileX -= 1.5 * app.speed
             missile.coords = (missileX, missile.coords[1])
+
+        missile.timeUntilLaunch -= 1
 
         if missile.coords[0] + missile.width < 0:
             app.missileList.pop(i)
         else:
             i += 1
+
+
 
 def checkMissileCollisions(app):
     for missile in app.missileList:
@@ -245,9 +248,13 @@ def drawMissiles(app):
         missileX = missile.coords[0]
         missileY = missile.coords[1]
         if missile.isTargeting:
-            drawCircle(640, missileY + missile.height / 2, app.missileAlertR)
+                drawCircle(640, missileY + missile.height / 2, app.missileAlertR)
         else:
-            drawRect(missileX, missileY, missile.width, missile.height, fill='red')
+            if missile.timeUntilLaunch < 25 and missile.timeUntilLaunch > 0:
+                drawCircle(640, missileY + missile.height / 2, app.missileAlertR, fill='yellow')
+            else:
+
+                drawRect(missileX, missileY, missile.width, missile.height, fill='red')
 
 def onStep(app):
     app.ticks += 1
@@ -272,7 +279,7 @@ def onStep(app):
 
     if (app.missileCount == 0 and app.coinsCount == 0
         and app.laserCount == 0 and app.zapperCount == 0):
-        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 5, 70, 15), k=1)
+        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 70, 5, 15), k=1)
         app.events[randomIdx[0]] = True
         
         if app.events[1]:
@@ -301,6 +308,7 @@ def redrawAll(app):
 
     drawZappers(app)
     drawMissiles(app)
+
 
 def main():
     runApp(width=680, height=400)
