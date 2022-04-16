@@ -2,41 +2,6 @@ from cmu_cs3_graphics import *
 import time
 import random
 import math
-# import pygame as pg
-
-# # https://stackoverflow.com/questions/45526988/does-anyone-have-an-example-of-using-sprite-sheets-in-tandem-with-xml-files
-# import xml.etree.ElementTree as ET
-
-
-# class SpriteSheet(object):
-#     # load an atlas image
-#     # can also pass an associated XML file (ref. Kenney art)
-#     def __init__(self, img_file, data_file=None):
-#         self.spritesheet = pg.image.load(img_file).convert_alpha()
-#         if data_file:
-#             tree = ET.parse(data_file)
-#             self.map = {}
-#             for node in tree.iter():
-#                 if node.attrib.get('name'):
-#                     name = node.attrib.get('name')
-#                     self.map[name] = {}
-#                     self.map[name]['x'] = int(node.attrib.get('x'))
-#                     self.map[name]['y'] = int(node.attrib.get('y'))
-#                     self.map[name]['width'] = int(node.attrib.get('width'))
-#                     self.map[name]['height'] = int(node.attrib.get('height'))
-
-#     def get_image_rect(self, x, y, w, h):
-#         return self.spritesheet.subsurface(pg.Rect(x, y, w, h))
-
-#     def get_image_name(self, name):
-#         rect = pg.Rect(self.map[name]['x'], self.map[name]['y'],
-#                        self.map[name]['width'], self.map[name]['height'])
-#         return self.spritesheet.subsurface(rect)
-
-# sheet = SpriteSheet("missileSpriteSheet.png", "missileSprite.xml")
-
-# img1 = sheet.get_image_name("walkRightIdle.png")
-# img2 = sheet.get_image_rect(0, 0, 22, 28)
 
 class Zapper(object):
     
@@ -55,12 +20,16 @@ class Missile(object):
         self.height = 25
         self.isTargeting = True
         self.timeUntilLaunch = 90
+        self.isRotated = False
+        self.timePathfinding = 30
+        self.angle = 0
+        self.isTargetingAgain = True
 
 def onAppStart(app):
 
     app.rectLeft = 100
     app.rectTop = 200
-    app.playerX = 225
+    app.playerX = 250
     app.playerY = app.height/2
     app.playerR = 15
     app.stepsPerSecond = 45
@@ -74,7 +43,7 @@ def onAppStart(app):
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
-    app.events = [True, False, False, False]
+    app.events = [False, False, False, False]
     (app.isMissile, app.isCoins, app.isLaser, app.isZapper) = (
         app.events[0], app.events[1], app.events[2], app.events[3])
     app.missileCount = app.coinsCount = app.laserCount = app.zapperCount = 0
@@ -85,8 +54,9 @@ def onAppStart(app):
     app.isDead = False
 
     app.missileImage = 'missile.png'
+    app.rotatedMissileImage = 'rotatedMissile.png'
     app.paused = False
-    
+
 # returns cell bounds (left, top, cellWidth, cellHeight)
 def getCellBounds(app, row, col):
     gridWidth = 680
@@ -208,21 +178,36 @@ def distance(x0, y0, x1, y1):
 
 # checks if player collides with any zappers
 def checkZapperCollisions(app):
+
     for zapper in app.zapperList:
         
         firstZapX = zapper.firstZapCoords[0]
         firstZapY = zapper.firstZapCoords[1]
+        secondZapX = zapper.secondZapCoords[0]
+        secondZapY = zapper.secondZapCoords[1]
 
         # checking collisions of zap circles
         if (distance(app.playerX, app.playerY, firstZapX, firstZapY) <=
            (app.playerR + zapper.radius)):
             app.isDead = True
-        secondZapX = zapper.secondZapCoords[0]
-        secondZapY = zapper.secondZapCoords[1]
+
         if (distance(app.playerX, app.playerY, secondZapX, secondZapY) <=
            (app.playerR + zapper.radius)):
            app.isDead = True
-    
+
+        # checking collisions of zap lines
+        # taken from https://www.geeksforgeeks.org/check-line-touches-intersects-circle/
+        # a = firstZapY - secondZapY
+        # b = secondZapX - firstZapX
+        # c = firstZapX * secondZapY - secondZapX * firstZapY
+        # print(a, b, c)
+        # dist = ((abs(a * app.playerX + b * app.playerY + c)) /
+        #     math.sqrt(a **2 + b ** 2))
+        # print(dist)
+        # if app.playerR >= dist:
+        #     print('YOU PASS AWAY.')
+        #     print()
+
 # moves zappers every step, deletes off-screen zappers
 def moveAndDeleteZappers(app):
     i = 0        
@@ -291,11 +276,35 @@ def moveAndDeleteMissiles(app):
         # moves non-targeting missiles
         elif missile.timeUntilLaunch <= 0:
             missileX = missile.coords[0]
-            missileX -= 1.5 * app.speed
-            missile.coords = (missileX, missile.coords[1])
+            missileY = missile.coords[1]
+            if not missile.isRotated:
+                
+                missileX -= 1.5 * app.speed
+                missile.coords = (missileX, missile.coords[1])
+            
+            # moves missiles that are bouncing back
+            else:
+                # changes the angle of the missile
+                if missile.isTargetingAgain:
+                    missileCenterX = ((missileX + 8) + (missileX + 8 + missile.width)) / 2
+                    missileCenterY = ((missileY + 15) + (missileY + 15 + missile.height)) / 2
+                    missile.angle = math.atan((missileCenterY - app.playerY) / (missileCenterX - app.playerX))
+                    print(missile.angle)
+                distance = app.speed * 0.75
+                missileX += distance * math.cos(missile.angle)
+                missileY += distance * math.sin(missile.angle)
+                missile.coords = (missileX, missileY)
+                missile.timePathfinding -= 1
+                if missile.timePathfinding == 0:
+                    missile.isTargetingAgain = False
+
+        if missile.coords[0] <= 0:
+            missile.isRotated = True
 
         # deletes off-screen missiles
-        if missile.coords[0] + missile.width < 0:
+        if ((missile.coords[0] > app.width or missile.coords[1] + missile.height < 0
+            or missile.coords[1] > app.height) and missile.isRotated):
+            print('hello')
             app.missileList.pop(i)
         else:
             i += 1
@@ -305,8 +314,8 @@ def moveAndDeleteMissiles(app):
 # checks player to missile collisions
 def checkMissileCollisions(app):
     for missile in app.missileList:
-        xCoord = missile.coords[0]
-        yCoord = missile.coords[1]
+        xCoord = missile.coords[0] + 8
+        yCoord = missile.coords[1] + 15
         nearestX = max(xCoord, min(app.playerX, xCoord + missile.width))
         nearestY = max(yCoord, min(app.playerY, yCoord + missile.height))
         if distance(app.playerX, app.playerY, nearestX, nearestY) < app.playerR:
@@ -325,7 +334,10 @@ def drawMissiles(app):
             else:
 
                 drawRect(missileX + 8, missileY + 15, missile.width, missile.height, fill='red')
-                drawImage(app.missileImage, missileX, missileY)
+                if missile.isRotated:
+                    drawImage(app.rotatedMissileImage, missileX, missileY)
+                else:
+                    drawImage(app.missileImage, missileX, missileY)
 
 # everything that should happen each step
 def stepEvents(app):
@@ -340,8 +352,9 @@ def stepEvents(app):
         pass
     
     elif app.isMissile:
-        if app.ticks % 40 == 0:
+        if app.ticks % 80 == 0:
             createMissile(app)
+
 
 
 
@@ -385,7 +398,7 @@ def onStep(app):
 def redrawAll(app):
 
     if app.isDead:
-        drawLabel('You died!', app.width/2, app.height/2)
+        drawLabel('I THIN KYOU PASS AWAY NOW.', app.width/2, app.height/2, size=30)
         drawLabel("Press 'r' to retry.", app.width/2, app.height/2 + 50)
         return
 
