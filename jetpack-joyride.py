@@ -5,10 +5,11 @@ import math
 
 class Zapper(object):
     
-    def __init__(self, firstZapCoords, secondZapCoords):
+    def __init__(self, firstZapCoords, secondZapCoords, angle):
         
         self.firstZapCoords = firstZapCoords
         self.secondZapCoords = secondZapCoords
+        self.angle = angle
         self.radius = 15
         
     
@@ -149,26 +150,26 @@ def playerMovement(app):
 
 # creates new zapper obstacle
 def createZapper(app):
-    margin = 100
+    margin = min(int(17 * app.speed + 32), 200)
     zapperR = 15
     firstZapX = app.width
     firstZapY = random.randint(zapperR, app.height - zapperR)
-    secondZapDistance = random.randint(zapperR * 3, margin)
+    secondZapDistance = margin # random.randint(zapperR * 3, margin)
 
     # randomizes coords of second zapper based on first zapper coords
     if firstZapY < secondZapDistance:
         angle = random.choice([0, math.pi/4, math.pi/2])
     elif firstZapY > app.height - secondZapDistance:
-        angle = random.choice([7*math.pi/4, 2*math.pi])
+        angle = random.choice([3*math.pi/2, 7*math.pi/4])
     else:
-        angle = random.choice([0, math.pi/4, math.pi/2, 7*math.pi/4, 2*math.pi])
+        angle = random.choice([0, math.pi/4, math.pi/2, 3*math.pi/2, 7*math.pi/4])
     secondZapX = firstZapX + (secondZapDistance * math.cos(angle))
     secondZapY = firstZapY + (secondZapDistance * math.sin(angle))
     firstZapCoords = (firstZapX, firstZapY)
     secondZapCoords = (secondZapX, secondZapY)
 
     # creates and makes new zapper
-    newZapper = Zapper(firstZapCoords, secondZapCoords)
+    newZapper = Zapper(firstZapCoords, secondZapCoords, angle)
     app.zapperList.append(newZapper)
     
     # tracks how many zappers left to create
@@ -199,16 +200,29 @@ def checkZapperCollisions(app):
            (app.playerR + zapper.radius)):
            app.isDead = True
 
-        #checking collisions of zap lines
-        # taken from https://www.geeksforgeeks.org/check-line-touches-intersects-circle/
-        # a = firstZapY - secondZapY
-        # b = secondZapX - firstZapX
-        # c = firstZapX * secondZapY - secondZapX * firstZapY
-        # dist = ((abs(a * app.playerX + b * app.playerY + c)) /
-        #     math.sqrt(a **2 + b ** 2))
-        # if app.playerR >= dist:
-        #     print('YOU PASS AWAY.')
-        #     print()
+        # checking collisions of zap lines
+        largerX = max(firstZapX, secondZapX)
+        smallerX = min(firstZapX, secondZapX)
+        largerY = max(firstZapY, secondZapY)
+        smallerY = min(firstZapY, secondZapY)
+
+        # still need to fix horizonal and vertical zapper line collisions
+
+        # if math.isclose(zapper.angle, 0, abs_tol=1e-8):
+        #     if app.playerX < largerX and app.playerX > smallerX and app.playerY == largerY:
+        #         print('he')
+        # elif math.isclose(zapper.angle, math.pi/2, abs_tol=1e-8) or math.isclose(zapper.angle, 3*math.pi/2, abs_tol=1e-8):
+        #     if app.playerY < largerY and app.playerY > smallerY and app.playerX == largerX:
+        #         print('she')
+        # taken from https://www.geeksforgeeks.org/check-line-touches-intersects-circle/    
+        if app.playerX >= smallerX and app.playerX <= largerX and app.playerY >= smallerY and app.playerY <= largerY:
+            a = firstZapY - secondZapY
+            b = secondZapX - firstZapX
+            c = firstZapX * secondZapY - secondZapX * firstZapY
+            dist = ((abs(a * app.playerX + b * app.playerY + c)) /
+                math.sqrt(a **2 + b ** 2))
+            if app.playerR >= dist:
+                app.isDead = True
 
 # moves zappers every step, deletes off-screen zappers
 def moveAndDeleteZappers(app):
@@ -335,7 +349,6 @@ def drawMissiles(app):
                 drawImage(app.flashingWarningImage, missileX + missile.width/2 - 75, missileY + missile.height/2, align='center')
             else:
 
-                drawRect(missileX + 8, missileY + 15, missile.width, missile.height, fill='red')
                 if missile.isRotated:
                     drawImage(app.rotatedMissileImage, missileX, missileY)
                 else:
@@ -352,6 +365,7 @@ def stepEvents(app):
         return
     if app.ticks % 500 == 0:
         app.speed += 0.1
+        app.speed = round(app.speed, 1)
     app.currentScore += int(app.speed) / 10
     app.ticks += 1
     
@@ -378,7 +392,7 @@ def stepEvents(app):
 
     if (app.missileCount == 0 and app.coinsCount == 0
         and app.laserCount == 0 and app.zapperCount == 0):
-        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 0, 0, 00), k=1)
+        randomIdx = random.choices([0, 1, 2, 3], weights=(0, 0, 0, 10), k=1)
         app.events[randomIdx[0]] = True
         
         if app.events[1]:
