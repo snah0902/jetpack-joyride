@@ -21,7 +21,7 @@ class Missile(object):
         self.isTargeting = True
         self.timeUntilLaunch = 90
         self.isRotated = False
-        self.timePathfinding = 30
+        self.timePathfinding = 0
         self.angle = 0
         self.isTargetingAgain = True
 
@@ -31,7 +31,7 @@ def onAppStart(app):
     app.rectTop = 200
     app.playerX = 250
     app.playerY = app.height/2
-    app.playerR = 15
+    app.playerR = 13
     app.stepsPerSecond = 45
 
     app.circleVelocity = 0
@@ -39,7 +39,9 @@ def onAppStart(app):
     app.jetpackAcceleration = 0
     app.stepsPerSecond = 45
     app.ticks = 0
-    app.speed = 5
+    app.currentScore = 0
+    app.highScore = 0
+    app.speed = 4
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
@@ -55,6 +57,8 @@ def onAppStart(app):
 
     app.missileImage = 'missile.png'
     app.rotatedMissileImage = 'rotatedMissile.png'
+    app.warningImage = 'warning.png'
+    app.flashingWarningImage = 'flashingWarning.png'
     app.paused = False
 
 # returns cell bounds (left, top, cellWidth, cellHeight)
@@ -85,7 +89,8 @@ def restartGame(app):
     app.isSpaceHeld = False
     app.jetpackAcceleration = 0
     app.ticks = 0
-    app.speed = 5
+    app.currentScore = 0
+    app.speed = 4
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
@@ -152,12 +157,11 @@ def createZapper(app):
 
     # randomizes coords of second zapper based on first zapper coords
     if firstZapY < secondZapDistance:
-        angle = random.choice([0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi])
+        angle = random.choice([0, math.pi/4, math.pi/2])
     elif firstZapY > app.height - secondZapDistance:
-        angle = random.choice([5*math.pi/4, 3*math.pi/2, 7*math.pi/4, 2*math.pi])
+        angle = random.choice([7*math.pi/4, 2*math.pi])
     else:
-        angle = random.choice([0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi,
-                            5*math.pi/4, 3*math.pi/2, 7*math.pi/4, 2*math.pi])
+        angle = random.choice([0, math.pi/4, math.pi/2, 7*math.pi/4, 2*math.pi])
     secondZapX = firstZapX + (secondZapDistance * math.cos(angle))
     secondZapY = firstZapY + (secondZapDistance * math.sin(angle))
     firstZapCoords = (firstZapX, firstZapY)
@@ -195,15 +199,13 @@ def checkZapperCollisions(app):
            (app.playerR + zapper.radius)):
            app.isDead = True
 
-        # checking collisions of zap lines
+        #checking collisions of zap lines
         # taken from https://www.geeksforgeeks.org/check-line-touches-intersects-circle/
         # a = firstZapY - secondZapY
         # b = secondZapX - firstZapX
         # c = firstZapX * secondZapY - secondZapX * firstZapY
-        # print(a, b, c)
         # dist = ((abs(a * app.playerX + b * app.playerY + c)) /
         #     math.sqrt(a **2 + b ** 2))
-        # print(dist)
         # if app.playerR >= dist:
         #     print('YOU PASS AWAY.')
         #     print()
@@ -228,12 +230,12 @@ def moveAndDeleteZappers(app):
 # draws zapper in zapperList
 def drawZappers(app):
     for zapper in app.zapperList:
+        drawLine(zapper.firstZapCoords[0], zapper.firstZapCoords[1],
+                 zapper.secondZapCoords[0], zapper.secondZapCoords[1])
         drawCircle(zapper.firstZapCoords[0], zapper.firstZapCoords[1],
                    zapper.radius, fill='orange')
         drawCircle(zapper.secondZapCoords[0], zapper.secondZapCoords[1],
                    zapper.radius, fill='orange')
-        drawLine(zapper.firstZapCoords[0], zapper.firstZapCoords[1],
-                 zapper.secondZapCoords[0], zapper.secondZapCoords[1])
 
 # creates different patterns of coins
 def createCoins(app):
@@ -244,6 +246,8 @@ def createMissile(app):
     missileX = app.width
     missileY = random.randint(0, app.height - 25)
     newMissile = Missile((missileX, missileY))
+    newMissile.timePathfinding = int(150 / app.speed)
+    print(newMissile.timePathfinding)
     app.missileList.append(newMissile)
     app.missileCount -= 1
     if app.missileCount == 0:
@@ -289,7 +293,6 @@ def moveAndDeleteMissiles(app):
                     missileCenterX = ((missileX + 8) + (missileX + 8 + missile.width)) / 2
                     missileCenterY = ((missileY + 15) + (missileY + 15 + missile.height)) / 2
                     missile.angle = math.atan((missileCenterY - app.playerY) / (missileCenterX - app.playerX))
-                    print(missile.angle)
                 distance = app.speed * 0.75
                 missileX += distance * math.cos(missile.angle)
                 missileY += distance * math.sin(missile.angle)
@@ -304,7 +307,6 @@ def moveAndDeleteMissiles(app):
         # deletes off-screen missiles
         if ((missile.coords[0] > app.width or missile.coords[1] + missile.height < 0
             or missile.coords[1] > app.height) and missile.isRotated):
-            print('hello')
             app.missileList.pop(i)
         else:
             i += 1
@@ -327,10 +329,10 @@ def drawMissiles(app):
         missileX = missile.coords[0]
         missileY = missile.coords[1]
         if missile.isTargeting:
-                drawCircle(640, missileY + missile.height / 2, app.missileAlertR)
+                drawImage(app.warningImage, missileX + missile.width/2 - 75, missileY + missile.height/2, align='center')
         else:
             if missile.timeUntilLaunch < 25 and missile.timeUntilLaunch > 0:
-                drawCircle(640, missileY + missile.height / 2, app.missileAlertR, fill='yellow')
+                drawImage(app.flashingWarningImage, missileX + missile.width/2 - 75, missileY + missile.height/2, align='center')
             else:
 
                 drawRect(missileX + 8, missileY + 15, missile.width, missile.height, fill='red')
@@ -339,34 +341,44 @@ def drawMissiles(app):
                 else:
                     drawImage(app.missileImage, missileX, missileY)
 
+# updates high score if player beats it
+def updateHighScore(app):
+    if app.currentScore > app.highScore:
+        app.highScore = int(app.currentScore)
+
 # everything that should happen each step
 def stepEvents(app):
     if app.isDead:
         return
+    if app.ticks % 500 == 0:
+        app.speed += 0.1
+    app.currentScore += int(app.speed) / 10
     app.ticks += 1
+    
     if app.isZapper:
-        if app.ticks % 40 == 0:
+        if app.ticks % int(200 / app.speed) == 0:
             createZapper(app)
     
     elif app.isCoins:
         pass
     
     elif app.isMissile:
-        if app.ticks % 80 == 0:
+        if app.ticks % int(400 / app.speed) == 0:
             createMissile(app)
 
 
 
-
+    updateHighScore(app)
     moveAndDeleteZappers(app)
     checkZapperCollisions(app)        
 
     moveAndDeleteMissiles(app)
     checkMissileCollisions(app)
 
+
     if (app.missileCount == 0 and app.coinsCount == 0
         and app.laserCount == 0 and app.zapperCount == 0):
-        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 0, 0, 0), k=1)
+        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 0, 0, 00), k=1)
         app.events[randomIdx[0]] = True
         
         if app.events[1]:
@@ -398,12 +410,16 @@ def onStep(app):
 def redrawAll(app):
 
     if app.isDead:
+        drawLabel(f'You went {int(app.currentScore)} m!', 10, 20, align='left', size=15)
+        drawLabel(f'Highscore: {app.highScore} m', 10, 50, align='left', size=15)
         drawLabel('I THIN KYOU PASS AWAY NOW.', app.width/2, app.height/2, size=30)
         drawLabel("Press 'r' to retry.", app.width/2, app.height/2 + 50)
         return
 
     drawCircle(app.playerX, app.playerY, app.playerR)
-    drawLabel(app.ticks // 10, app.width / 2, app.height / 2)
+    drawLabel(f'Ticks: {app.ticks}', app.width / 2, app.height / 2)
+    drawLabel(f'Score: {int(app.currentScore)}', app.width / 2, app.height / 2 + 20)
+    drawLabel(f'Speed: {app.speed}', app.width / 2, app.height / 2 + 40)
 
     drawZappers(app)
     drawMissiles(app)
@@ -413,3 +429,4 @@ def main():
     runApp(width=680, height=400)
 
 main()
+
