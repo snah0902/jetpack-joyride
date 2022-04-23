@@ -154,7 +154,7 @@ def createZapper(app):
     zapperR = 15
     firstZapX = app.width
     firstZapY = random.randint(zapperR, app.height - zapperR)
-    secondZapDistance = margin # random.randint(zapperR * 3, margin)
+    secondZapDistance = random.randint(zapperR * 3, margin)
 
     # randomizes coords of second zapper based on first zapper coords
     if firstZapY < secondZapDistance:
@@ -392,7 +392,7 @@ def stepEvents(app):
 
     if (app.missileCount == 0 and app.coinsCount == 0
         and app.laserCount == 0 and app.zapperCount == 0):
-        randomIdx = random.choices([0, 1, 2, 3], weights=(0, 0, 0, 10), k=1)
+        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 0, 0, 10), k=1)
         app.events[randomIdx[0]] = True
         
         if app.events[1]:
