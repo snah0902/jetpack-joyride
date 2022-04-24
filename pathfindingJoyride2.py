@@ -41,7 +41,8 @@ def onAppStart(app):
     app.ticks = 0
     app.currentScore = 0
     app.highScore = 0
-    app.speed = 4
+    app.speed = 3
+    app.speedCounter = 0
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
@@ -109,7 +110,8 @@ def restartGame(app):
     app.jetpackAcceleration = 0
     app.ticks = 0
     app.currentScore = 0
-    app.speed = 4
+    app.speed = 3
+    app.speedCounter = 0
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
@@ -364,9 +366,9 @@ def updateHighScore(app):
 def stepEvents(app):
     if app.isDead:
         return
-    if app.ticks % 500 == 0:
-        app.speed += 0.1
-        app.speed = round(app.speed, 1)
+    print(app.speed)
+    if app.ticks % 10 == 0:
+        app.speed = (7 * app.ticks**2 + 30000000) / (app.ticks**2 + 10000000)
     app.currentScore += int(app.speed) / 10
     app.ticks += 1
     
@@ -378,7 +380,7 @@ def stepEvents(app):
         pass
     
     elif app.isMissile:
-        if app.ticks % int(400 / app.speed) == 0:
+        if app.ticks % int(350 / app.speed) == 0:
             createMissile(app)
 
 
@@ -435,7 +437,7 @@ def redrawAll(app):
     if app.isDead:
         drawLabel(f'You went {int(app.currentScore)} m!', 10, 20, align='left', size=15)
         drawLabel(f'Highscore: {app.highScore} m', 10, 50, align='left', size=15)
-        drawLabel('I THIN KYOU PASS AWAY NOW.', app.width/2, app.height/2, size=30)
+        drawLabel('You died!', app.width/2, app.height/2, size=30)
         drawLabel("Press 'r' to retry.", app.width/2, app.height/2 + 50)
         return
 
