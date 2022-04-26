@@ -366,7 +366,6 @@ def updateHighScore(app):
 def stepEvents(app):
     if app.isDead:
         return
-    print(app.speed)
     if app.ticks % 10 == 0:
         app.speed = (7 * app.ticks**2 + 30000000) / (app.ticks**2 + 10000000)
     app.currentScore += int(app.speed) / 10
@@ -445,9 +444,7 @@ def redrawAll(app):
         drawPath(app)
 
     drawCircle(app.playerX, app.playerY, app.playerR)
-    drawLabel(f'Ticks: {app.ticks}', app.width / 2, app.height / 2)
-    drawLabel(f'Score: {int(app.currentScore)}', app.width / 2, app.height / 2 + 20)
-    drawLabel(f'Speed: {app.speed}', app.width / 2, app.height / 2 + 40)
+    drawLabel(f'Score: {int(app.currentScore)}', 30, 30, align = 'left')
     
     
 
