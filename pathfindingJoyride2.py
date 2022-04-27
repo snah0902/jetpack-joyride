@@ -46,15 +46,13 @@ def onAppStart(app):
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
-    app.events = [False, False, False, False]
-    (app.isMissile, app.isCoins, app.isLaser, app.isZapper) = (
-        app.events[0], app.events[1], app.events[2], app.events[3])
-    app.missileCount = app.coinsCount = app.laserCount = app.zapperCount = 0
-    app.currentCoins = 0
+    app.events = [True, False]
+    (app.isMissile, app.isZapper) = (
+        app.events[0], app.events[1])
+    app.missileCount = app.zapperCount = 0
     app.isDead = False
 
     app.missileImage = 'missile.png'
-    app.rotatedMissileImage = 'rotatedMissile.png'
     app.warningImage = 'warning.png'
     app.flashingWarningImage = 'flashingWarning.png'
     app.paused = False
@@ -115,11 +113,10 @@ def restartGame(app):
     app.zapperList = [ ]
     app.missileList = [ ]
     app.missileAlertR = 15
-    app.events = [True, False, False, False]
-    (app.isMissile, app.isCoins, app.isLaser, app.isZapper) = (
-        app.events[0], app.events[1], app.events[2], app.events[3])
-    app.missileCount = app.coinsCount = app.laserCount = app.zapperCount = 0
-    app.currentCoins = 0
+    app.events = [True, False]
+    (app.isMissile, app.isZapper) = (
+        app.events[0], app.events[1])
+    app.missileCount = app.zapperCount = 0
 
     app.grid = []
     app.possiblePath = []
@@ -199,7 +196,7 @@ def createZapper(app):
     # tracks how many zappers left to create
     app.zapperCount -= 1
     if app.zapperCount == 0:
-        app.events[3] = False
+        app.events[1] = False
 
 # returns distance between two points
 def distance(x0, y0, x1, y1):
@@ -375,9 +372,6 @@ def stepEvents(app):
         if app.ticks % int(200 / app.speed) == 0:
             createZapper(app)
     
-    elif app.isCoins:
-        pass
-    
     elif app.isMissile:
         if app.ticks % int(350 / app.speed) == 0:
             createMissile(app)
@@ -400,20 +394,11 @@ def stepEvents(app):
             app.pathfind = False
 
 
-    if (app.missileCount == 0 and app.coinsCount == 0
-        and app.laserCount == 0 and app.zapperCount == 0):
-        randomIdx = random.choices([0, 1, 2, 3], weights=(10, 0, 0, 10), k=1)
+    if (app.missileCount == 0 and app.zapperCount == 0):
+        randomIdx = random.choices([0, 1], weights=(10, 10), k=1)
         app.events[randomIdx[0]] = True
-        
-        if app.events[1]:
-            app.events[1] = False
-            app.events[0] = True
-        elif app.events[2]:
-            app.events[2] = False
-            app.events[3] = True
 
-        (app.isMissile, app.isCoins, app.isLaser, app.isZapper) = (
-        app.events[0], app.events[1], app.events[2], app.events[3])
+        (app.isMissile, app.isZapper) = (app.events[0], app.events[1])
         if app.isZapper:
             app.zapperCount += random.randint(5, 10)
         elif app.isMissile:
